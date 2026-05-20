@@ -1,0 +1,7 @@
+torch>=2.0
+numpy>=1.24
+fastapi>=0.100
+uvicorn>=0.23
+huggingface_hub>=0.20
+scipy>=1.10
+qwen-asr

@@ -15,7 +15,9 @@ struct TimestampSegment: Codable, Identifiable {
 
 struct ContentView: View {
     @Binding var backendReady: Bool
+    @Binding var modelLoaded: Bool
     @Binding var timestampsSupported: Bool
+    @Binding var showSettings: Bool
     @State private var transcription = ""
     @State private var detectedLanguage = ""
     @State private var selectedLanguage = ""
@@ -53,6 +55,7 @@ struct ContentView: View {
         VStack(spacing: 0) {
             headerView
             Divider()
+            modelWarningBanner
             transcriptionView
             Divider()
             controlsView
@@ -80,7 +83,7 @@ struct ContentView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Qwen3-ASR")
                     .font(.headline)
-                Text(statusMessage)
+                Text(headerStatusMessage)
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -91,6 +94,12 @@ struct ContentView: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
+    }
+
+    var headerStatusMessage: String {
+        if !backendReady { return "Waiting for backend..." }
+        if !modelLoaded { return "Model not installed" }
+        return statusMessage
     }
 
     // MARK: - Language Picker
@@ -104,6 +113,33 @@ struct ContentView: View {
         }
         .frame(width: 130)
         .disabled(isTranscribing)
+    }
+
+    // MARK: - Model Warning Banner
+
+    @ViewBuilder
+    var modelWarningBanner: some View {
+        if backendReady && !modelLoaded {
+            Button(action: { showSettings = true }) {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundColor(.orange)
+                    Text("Speech recognition model not installed. Click to download.")
+                        .font(.caption)
+                        .foregroundColor(.primary)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+                .background(Color.orange.opacity(0.1))
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            Divider()
+        }
     }
 
     // MARK: - Transcription Area
@@ -308,8 +344,8 @@ struct ContentView: View {
             .shadow(color: Color.accentColor.opacity(0.3), radius: 6, y: 3)
         }
         .buttonStyle(.plain)
-        .disabled(!backendReady || isTranscribing)
-        .opacity((backendReady && !isTranscribing) ? 1 : 0.5)
+        .disabled(!backendReady || !modelLoaded || isTranscribing)
+        .opacity((backendReady && modelLoaded && !isTranscribing) ? 1 : 0.5)
     }
 
     func playerControls(url: URL) -> some View {

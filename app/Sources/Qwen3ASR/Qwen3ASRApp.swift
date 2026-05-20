@@ -3,19 +3,40 @@ import SwiftUI
 @main
 struct Qwen3ASRApp: App {
     @State private var backendReady = false
+    @State private var modelLoaded = false
     @State private var timestampsSupported = false
     @State private var backendProcess: Process?
+    @State private var showSettings = false
 
     private let backendURL = "http://127.0.0.1:8765"
 
     var body: some Scene {
         WindowGroup {
-            ContentView(backendReady: $backendReady, timestampsSupported: $timestampsSupported)
-                .frame(minWidth: 540, minHeight: 480)
-                .onAppear { startBackend() }
-                .onDisappear { stopBackend() }
+            ContentView(
+                backendReady: $backendReady,
+                modelLoaded: $modelLoaded,
+                timestampsSupported: $timestampsSupported,
+                showSettings: $showSettings
+            )
+            .frame(minWidth: 540, minHeight: 480)
+            .onAppear { startBackend() }
+            .onDisappear { stopBackend() }
+            .sheet(isPresented: $showSettings) {
+                SettingsView(
+                    modelLoaded: $modelLoaded,
+                    timestampsSupported: $timestampsSupported
+                )
+            }
         }
         .windowResizability(.contentMinSize)
+        .commands {
+            CommandGroup(after: .appSettings) {
+                Button("Model Settings...") {
+                    showSettings = true
+                }
+                .keyboardShortcut(",", modifiers: .command)
+            }
+        }
     }
 
     func startBackend() {
@@ -27,7 +48,11 @@ struct Qwen3ASRApp: App {
                    json["status"] as? String == "ok" {
                     await MainActor.run {
                         backendReady = true
+                        modelLoaded = json["model_loaded"] as? Bool ?? false
                         timestampsSupported = json["timestamps_supported"] as? Bool ?? false
+                        if !modelLoaded {
+                            showSettings = true
+                        }
                     }
                     return
                 }
@@ -43,7 +68,7 @@ struct Qwen3ASRApp: App {
 
     func launchBackendProcess() {
         let repoRoot = Bundle.main.bundlePath.contains("DerivedData") || Bundle.main.bundlePath.contains("debug")
-            ? NSHomeDirectory() + "/codes/yue"
+            ? NSHomeDirectory() + "/codes/qwen3-asr-mac"
             : Bundle.main.bundlePath + "/../../../.."
 
         let venvPython = "\(repoRoot)/.venv/bin/python3"

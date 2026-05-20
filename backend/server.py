@@ -4,12 +4,14 @@
 import os
 import subprocess
 import tempfile
+import threading
 from contextlib import asynccontextmanager
 
 import numpy as np
 import torch
 from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from huggingface_hub import snapshot_download
 from qwen_asr import Qwen3ASRModel
 
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
@@ -21,14 +23,31 @@ MODEL_PATH = os.environ.get(
 )
 
 ALIGNER_PATH = os.path.join(BASE_DIR, "models", "Qwen3-ForcedAligner-0.6B")
-ALIGNER_AVAILABLE = os.path.isdir(ALIGNER_PATH) and any(
-    f.endswith(".safetensors") for f in os.listdir(ALIGNER_PATH)
-)
 DEVICE = os.environ.get("QWEN3_ASR_DEVICE", "mps" if torch.backends.mps.is_available() else "cpu")
 DTYPE = torch.float16 if DEVICE == "mps" else torch.float32
 
 model = None
+model_exists = False
+aligner_available = False
 timestamps_supported = False
+
+download_state = {
+    "status": "idle",
+    "message": "",
+}
+
+def _check_model_exists():
+    if not os.path.isdir(MODEL_PATH):
+        return False
+    try:
+        return any(f.endswith(".safetensors") for f in os.listdir(MODEL_PATH))
+    except OSError:
+        return False
+
+def _check_aligner_available():
+    return os.path.isdir(ALIGNER_PATH) and any(
+        f.endswith(".safetensors") for f in os.listdir(ALIGNER_PATH)
+    )
 
 
 def _build_sentence_timestamps(audio: np.ndarray, sr: int, text: str) -> list[dict]:
@@ -177,34 +196,83 @@ def decode_audio(audio_bytes: bytes) -> np.ndarray:
 
 
 def get_model():
-    global model, timestamps_supported
-    if model is None:
-        print(f"Loading Qwen3-ASR model from {MODEL_PATH} on {DEVICE}...")
-        kwargs = dict(
+    global model, model_exists, aligner_available, timestamps_supported
+    if model is not None:
+        return model
+
+    model_exists = _check_model_exists()
+    aligner_available = _check_aligner_available()
+
+    if not model_exists:
+        print(f"Model not found at {MODEL_PATH}. Ready for download.")
+        return None
+
+    print(f"Loading Qwen3-ASR model from {MODEL_PATH} on {DEVICE}...")
+    kwargs = dict(
+        dtype=DTYPE,
+        device_map=DEVICE,
+        max_new_tokens=2048,
+        max_inference_batch_size=1,
+    )
+    if aligner_available:
+        print(f"Loading forced aligner from {ALIGNER_PATH}...")
+        kwargs["forced_aligner"] = ALIGNER_PATH
+        kwargs["forced_aligner_kwargs"] = dict(
             dtype=DTYPE,
             device_map=DEVICE,
-            max_new_tokens=2048,
-            max_inference_batch_size=1,
         )
-        if ALIGNER_AVAILABLE:
-            print(f"Loading forced aligner from {ALIGNER_PATH}...")
-            kwargs["forced_aligner"] = ALIGNER_PATH
-            kwargs["forced_aligner_kwargs"] = dict(
-                dtype=DTYPE,
-                device_map=DEVICE,
-            )
-            timestamps_supported = True
-        else:
-            print("Forced aligner not available, timestamps disabled.")
+        timestamps_supported = True
+    else:
+        print("Forced aligner not available, timestamps disabled.")
 
-        model = Qwen3ASRModel.from_pretrained(MODEL_PATH, **kwargs)
-        print("Model loaded.")
+    model = Qwen3ASRModel.from_pretrained(MODEL_PATH, **kwargs)
+    print("Model loaded.")
     return model
+
+
+def _download_thread():
+    global download_state, model, model_exists, aligner_available, timestamps_supported
+    try:
+        download_state["status"] = "downloading"
+        download_state["message"] = "Downloading Qwen3-ASR model... (~3GB)"
+
+        os.makedirs(MODEL_PATH, exist_ok=True)
+        snapshot_download(
+            "Qwen/Qwen3-ASR-1.7B",
+            local_dir=MODEL_PATH,
+            local_dir_use_symlinks=False,
+        )
+
+        download_state["message"] = "Downloading forced aligner model..."
+        os.makedirs(ALIGNER_PATH, exist_ok=True)
+        snapshot_download(
+            "Qwen/Qwen3-ForcedAligner-0.6B",
+            local_dir=ALIGNER_PATH,
+            local_dir_use_symlinks=False,
+        )
+
+        download_state["message"] = "Loading models into memory..."
+        get_model()
+
+        download_state["status"] = "done"
+        download_state["message"] = "Models ready."
+
+    except Exception as e:
+        download_state["status"] = "error"
+        download_state["message"] = str(e)
+        import traceback
+        traceback.print_exc()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    get_model()
+    global model_exists, aligner_available, timestamps_supported
+    model_exists = _check_model_exists()
+    aligner_available = _check_aligner_available()
+    if model_exists:
+        get_model()
+    else:
+        print("Model not found; server running in setup mode.")
     yield
 
 
@@ -229,6 +297,45 @@ async def health():
     }
 
 
+@app.get("/model-status")
+async def model_status():
+    return {
+        "model_loaded": model is not None,
+        "model_exists_on_disk": _check_model_exists(),
+        "aligner_available": _check_aligner_available(),
+        "device": DEVICE,
+        "download": download_state,
+    }
+
+
+@app.post("/download-model")
+async def download_model():
+    global download_state
+    if download_state["status"] == "downloading":
+        return {"status": "already_downloading", "message": download_state["message"]}
+
+    download_state = {"status": "downloading", "message": "Starting download..."}
+    thread = threading.Thread(target=_download_thread, daemon=True)
+    thread.start()
+    return {"status": "started"}
+
+
+@app.get("/download-status")
+async def download_status():
+    return download_state
+
+
+@app.post("/reload-model")
+async def reload_model():
+    global model, model_exists, aligner_available, timestamps_supported
+    model = None
+    get_model()
+    return {
+        "model_loaded": model is not None,
+        "timestamps_supported": timestamps_supported,
+    }
+
+
 @app.post("/transcribe")
 async def transcribe(
     file: UploadFile = File(...),
@@ -239,12 +346,17 @@ async def transcribe(
         audio_bytes = await file.read()
         audio_data = decode_audio(audio_bytes)
 
-        # Truncate if too long (>10 minutes = 9.6M samples at 16kHz)
         max_samples = 10 * 60 * 16000
         if len(audio_data) > max_samples:
             audio_data = audio_data[:max_samples]
 
         m = get_model()
+        if m is None:
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
+                {"error": "Model not installed. Please download the model first."},
+                status_code=503,
+            )
         lang = language.strip() if language.strip() else None
 
         results = m.transcribe(
