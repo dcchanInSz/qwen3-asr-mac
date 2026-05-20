@@ -11,7 +11,7 @@ import numpy as np
 import torch
 from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from huggingface_hub import snapshot_download
+from huggingface_hub import HfApi, hf_hub_download
 from qwen_asr import Qwen3ASRModel
 
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
@@ -231,34 +231,65 @@ def get_model():
     return model
 
 
+def _download_repo_with_progress(repo_id, local_dir, start_pct, end_pct):
+    api = HfApi()
+    info = api.repo_info(repo_id)
+    files = [f for f in info.siblings
+             if not f.rfilename.startswith('.') and f.rfilename != 'README.md']
+
+    os.makedirs(local_dir, exist_ok=True)
+
+    total_estimate = 0
+    for f in files:
+        if f.size:
+            total_estimate += f.size
+        elif f.rfilename.endswith(('.safetensors', '.bin', '.pt', '.pth', '.gguf')):
+            total_estimate += 2_000_000_000
+        else:
+            total_estimate += 1_000_000
+
+    cumulative_bytes = 0
+
+    for f in files:
+        basename = os.path.basename(f.rfilename)
+        download_state["message"] = f"Downloading {basename}..."
+
+        local_path = hf_hub_download(
+            repo_id,
+            f.rfilename,
+            local_dir=local_dir,
+            local_dir_use_symlinks=False,
+        )
+
+        if local_path and os.path.isfile(local_path):
+            file_size = os.path.getsize(local_path)
+        elif f.size:
+            file_size = f.size
+        else:
+            file_size = 0
+
+        cumulative_bytes += file_size
+
+        pct = start_pct + (cumulative_bytes / max(total_estimate, 1)) * (end_pct - start_pct)
+        download_state["progress"] = min(int(pct), end_pct)
+
+    download_state["progress"] = end_pct
+
+
 def _download_thread():
     global download_state, model, model_exists, aligner_available, timestamps_supported
     try:
         download_state["status"] = "downloading"
         download_state["progress"] = 0
         download_state["message"] = "Downloading Qwen3-ASR model... (~3GB)"
+        _download_repo_with_progress("Qwen/Qwen3-ASR-1.7B", MODEL_PATH, 10, 45)
 
-        os.makedirs(MODEL_PATH, exist_ok=True)
-        download_state["progress"] = 10
-        snapshot_download(
-            "Qwen/Qwen3-ASR-1.7B",
-            local_dir=MODEL_PATH,
-            local_dir_use_symlinks=False,
-        )
-
-        download_state["progress"] = 45
-        download_state["message"] = "Downloading forced aligner model..."
-        os.makedirs(ALIGNER_PATH, exist_ok=True)
         download_state["progress"] = 50
-        snapshot_download(
-            "Qwen/Qwen3-ForcedAligner-0.6B",
-            local_dir=ALIGNER_PATH,
-            local_dir_use_symlinks=False,
-        )
+        download_state["message"] = "Downloading forced aligner model..."
+        _download_repo_with_progress("Qwen/Qwen3-ForcedAligner-0.6B", ALIGNER_PATH, 50, 85)
 
-        download_state["progress"] = 85
-        download_state["message"] = "Loading models into memory..."
         download_state["progress"] = 90
+        download_state["message"] = "Loading models into memory..."
         get_model()
 
         download_state["status"] = "done"
