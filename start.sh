@@ -6,9 +6,22 @@ VENV_DIR="$SCRIPT_DIR/.venv"
 
 echo "=== Qwen3-ASR macOS App ==="
 
+find_python() {
+  for py in /opt/homebrew/bin/python3.12 /opt/homebrew/bin/python3 /usr/local/bin/python3.12 /usr/local/bin/python3 python3.12 python3; do
+    if command -v "$py" &>/dev/null; then
+      echo "$py"
+      return
+    fi
+  done
+  echo "python3"
+}
+
+PYTHON=$(find_python)
+echo "Using Python: $PYTHON"
+
 check_python() {
   local ver
-  ver=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || echo "0.0")
+  ver=$("$PYTHON" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || echo "0.0")
   local major minor
   major=$(echo "$ver" | cut -d. -f1)
   minor=$(echo "$ver" | cut -d. -f2)
@@ -34,7 +47,7 @@ setup_venv() {
   if needs_setup; then
     if [ ! -f "$VENV_DIR/bin/activate" ]; then
       echo "Creating Python virtual environment..."
-      python3 -m venv "$VENV_DIR"
+      "$PYTHON" -m venv "$VENV_DIR"
     fi
     echo "Installing Python dependencies..."
     source "$VENV_DIR/bin/activate"
@@ -56,7 +69,7 @@ setup_venv
 lsof -ti :8765 | xargs kill -9 2>/dev/null || true
 
 echo "Starting backend..."
-python3 "$SCRIPT_DIR/backend/server.py" &
+"$VENV_DIR/bin/python3" "$SCRIPT_DIR/backend/server.py" &
 BACKEND_PID=$!
 
 echo "Waiting for backend..."
