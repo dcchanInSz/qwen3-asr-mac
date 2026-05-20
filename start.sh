@@ -6,6 +6,20 @@ VENV_DIR="$SCRIPT_DIR/.venv"
 
 echo "=== Qwen3-ASR macOS App ==="
 
+check_python() {
+  local ver
+  ver=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || echo "0.0")
+  local major minor
+  major=$(echo "$ver" | cut -d. -f1)
+  minor=$(echo "$ver" | cut -d. -f2)
+  if [ "$major" -lt 3 ] || ([ "$major" -eq 3 ] && [ "$minor" -lt 10 ]); then
+    echo "ERROR: Python 3.10+ is required (found $ver)."
+    echo "Install with: brew install python@3.12"
+    exit 1
+  fi
+}
+check_python
+
 needs_setup() {
   if [ ! -f "$VENV_DIR/bin/python3" ]; then
     return 0
@@ -25,8 +39,7 @@ setup_venv() {
     echo "Installing Python dependencies..."
     source "$VENV_DIR/bin/activate"
     pip install --upgrade pip
-    pip install qwen-asr
-    pip install fastapi uvicorn huggingface_hub scipy
+    pip install --extra-index-url https://pypi.org/simple/ qwen-asr fastapi uvicorn huggingface_hub scipy
   fi
   source "$VENV_DIR/bin/activate"
 }
