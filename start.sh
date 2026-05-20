@@ -47,7 +47,18 @@ setup_venv() {
   if needs_setup; then
     echo "Creating Python virtual environment..."
     rm -rf "$VENV_DIR"
-    "$PYTHON" -m venv "$VENV_DIR"
+
+    if ! "$PYTHON" -m venv "$VENV_DIR" 2>/dev/null; then
+      echo "venv failed (ensurepip issue), trying --without-pip..."
+      rm -rf "$VENV_DIR"
+      "$PYTHON" -m venv --without-pip "$VENV_DIR"
+      source "$VENV_DIR/bin/activate"
+      echo "Bootstrapping pip..."
+      "$PYTHON" -m ensurepip --upgrade --default-pip 2>/dev/null || {
+        curl -sS https://bootstrap.pypa.io/get-pip.py | "$PYTHON"
+      }
+    fi
+
     source "$VENV_DIR/bin/activate"
     echo "Installing Python dependencies..."
     pip install --upgrade pip
