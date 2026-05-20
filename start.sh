@@ -6,10 +6,22 @@ VENV_DIR="$SCRIPT_DIR/.venv"
 
 echo "=== Qwen3-ASR macOS App ==="
 
+needs_setup() {
+  if [ ! -f "$VENV_DIR/bin/python3" ]; then
+    return 0
+  fi
+  if ! "$VENV_DIR/bin/python3" -c "import numpy" 2>/dev/null; then
+    return 0
+  fi
+  return 1
+}
+
 setup_venv() {
-  if [ ! -f "$VENV_DIR/bin/activate" ]; then
-    echo "Creating Python virtual environment..."
-    python3 -m venv "$VENV_DIR"
+  if needs_setup; then
+    if [ ! -f "$VENV_DIR/bin/activate" ]; then
+      echo "Creating Python virtual environment..."
+      python3 -m venv "$VENV_DIR"
+    fi
     echo "Installing Python dependencies..."
     source "$VENV_DIR/bin/activate"
     pip install --upgrade pip
