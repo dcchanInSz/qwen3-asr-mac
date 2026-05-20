@@ -24,7 +24,8 @@ struct Qwen3ASRApp: App {
             .sheet(isPresented: $showSettings) {
                 SettingsView(
                     modelLoaded: $modelLoaded,
-                    timestampsSupported: $timestampsSupported
+                    timestampsSupported: $timestampsSupported,
+                    showSettings: $showSettings
                 )
             }
         }

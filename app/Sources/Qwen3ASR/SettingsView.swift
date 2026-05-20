@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     @Binding var modelLoaded: Bool
     @Binding var timestampsSupported: Bool
+    @Binding var showSettings: Bool
     @State private var modelExistsOnDisk = false
     @State private var alignerAvailable = false
     @State private var downloadStatus = "idle"
@@ -26,6 +27,16 @@ struct SettingsView: View {
             modelSection
 
             Spacer()
+
+            HStack {
+                Spacer()
+                Button("Close") {
+                    showSettings = false
+                }
+                .keyboardShortcut(.escape, modifiers: [])
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+            }
         }
         .padding(24)
         .frame(width: 420, height: 320)
