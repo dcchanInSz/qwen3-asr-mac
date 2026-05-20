@@ -1,0 +1,6 @@
+models/
+app/.build/
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
