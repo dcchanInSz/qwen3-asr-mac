@@ -33,6 +33,7 @@ timestamps_supported = False
 
 download_state = {
     "status": "idle",
+    "progress": 0,
     "message": "",
 }
 
@@ -234,31 +235,39 @@ def _download_thread():
     global download_state, model, model_exists, aligner_available, timestamps_supported
     try:
         download_state["status"] = "downloading"
+        download_state["progress"] = 0
         download_state["message"] = "Downloading Qwen3-ASR model... (~3GB)"
 
         os.makedirs(MODEL_PATH, exist_ok=True)
+        download_state["progress"] = 10
         snapshot_download(
             "Qwen/Qwen3-ASR-1.7B",
             local_dir=MODEL_PATH,
             local_dir_use_symlinks=False,
         )
 
+        download_state["progress"] = 45
         download_state["message"] = "Downloading forced aligner model..."
         os.makedirs(ALIGNER_PATH, exist_ok=True)
+        download_state["progress"] = 50
         snapshot_download(
             "Qwen/Qwen3-ForcedAligner-0.6B",
             local_dir=ALIGNER_PATH,
             local_dir_use_symlinks=False,
         )
 
+        download_state["progress"] = 85
         download_state["message"] = "Loading models into memory..."
+        download_state["progress"] = 90
         get_model()
 
         download_state["status"] = "done"
+        download_state["progress"] = 100
         download_state["message"] = "Models ready."
 
     except Exception as e:
         download_state["status"] = "error"
+        download_state["progress"] = -1
         download_state["message"] = str(e)
         import traceback
         traceback.print_exc()
@@ -314,7 +323,7 @@ async def download_model():
     if download_state["status"] == "downloading":
         return {"status": "already_downloading", "message": download_state["message"]}
 
-    download_state = {"status": "downloading", "message": "Starting download..."}
+    download_state = {"status": "downloading", "progress": 0, "message": "Starting download..."}
     thread = threading.Thread(target=_download_thread, daemon=True)
     thread.start()
     return {"status": "started"}

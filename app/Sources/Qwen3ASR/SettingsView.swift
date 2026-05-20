@@ -7,6 +7,7 @@ struct SettingsView: View {
     @State private var alignerAvailable = false
     @State private var downloadStatus = "idle"
     @State private var downloadMessage = ""
+    @State private var downloadProgress: Double = 0
     @State private var statusCheckTimer: Timer?
 
     var body: some View {
@@ -82,13 +83,15 @@ struct SettingsView: View {
 
                     if downloadStatus == "downloading" {
                         VStack(alignment: .leading, spacing: 8) {
-                            HStack(spacing: 8) {
-                                ProgressView()
-                                    .scaleEffect(0.8)
-                                Text(downloadMessage.isEmpty ? "Downloading..." : downloadMessage)
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
+                            Text(downloadMessage.isEmpty ? "Downloading..." : downloadMessage)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            ProgressView(value: downloadProgress, total: 100)
+                                .progressViewStyle(.linear)
+                                .frame(maxWidth: .infinity)
+                            Text(String(format: "%.0f%% complete", downloadProgress))
+                                .font(.caption2)
+                                .foregroundColor(.secondary.opacity(0.6))
                             Text("This may take several minutes depending on your connection.")
                                 .font(.caption2)
                                 .foregroundColor(.secondary.opacity(0.6))
@@ -161,6 +164,7 @@ struct SettingsView: View {
                     let prevStatus = downloadStatus
                     downloadStatus = dl["status"] as? String ?? "idle"
                     downloadMessage = dl["message"] as? String ?? ""
+                    downloadProgress = dl["progress"] as? Double ?? 0
 
                     if prevStatus == "downloading" && downloadStatus == "done" {
                         fetchLatestHealth()
@@ -187,8 +191,11 @@ struct SettingsView: View {
         guard let url = URL(string: "http://127.0.0.1:8765/download-model") else { return }
         downloadStatus = "downloading"
         downloadMessage = "Starting download..."
+        downloadProgress = 0
         Task {
-            _ = try? await URLSession.shared.data(from: url)
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            _ = try? await URLSession.shared.data(for: request)
         }
     }
 }
