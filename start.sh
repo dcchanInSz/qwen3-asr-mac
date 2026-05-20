@@ -45,12 +45,11 @@ needs_setup() {
 
 setup_venv() {
   if needs_setup; then
-    if [ ! -f "$VENV_DIR/bin/activate" ]; then
-      echo "Creating Python virtual environment..."
-      "$PYTHON" -m venv "$VENV_DIR"
-    fi
-    echo "Installing Python dependencies..."
+    echo "Creating Python virtual environment..."
+    rm -rf "$VENV_DIR"
+    "$PYTHON" -m venv "$VENV_DIR"
     source "$VENV_DIR/bin/activate"
+    echo "Installing Python dependencies..."
     pip install --upgrade pip
     pip install --extra-index-url https://pypi.org/simple/ qwen-asr fastapi uvicorn huggingface_hub scipy
   fi
