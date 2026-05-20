@@ -25,7 +25,8 @@ setup_venv() {
     echo "Installing Python dependencies..."
     source "$VENV_DIR/bin/activate"
     pip install --upgrade pip
-    pip install -r "$SCRIPT_DIR/backend/requirements.txt"
+    pip install qwen-asr
+    pip install fastapi uvicorn huggingface_hub scipy
   fi
   source "$VENV_DIR/bin/activate"
 }
