@@ -1,7 +1,7 @@
-torch>=2.0
-numpy>=1.24
-fastapi>=0.100
-uvicorn>=0.23
-huggingface_hub>=0.20
-scipy>=1.10
+torch
+numpy
+fastapi
+uvicorn
+huggingface_hub
+scipy
 qwen-asr
