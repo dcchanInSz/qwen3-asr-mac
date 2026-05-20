@@ -2,6 +2,8 @@
 
 Native macOS speech recognition app using [Qwen3-ASR](https://huggingface.co/Qwen/Qwen3-ASR-1.7B).
 
+[中文文档](README_CN.md)
+
 ## Prerequisites
 
 - **macOS 14 (Sonoma)** or later
