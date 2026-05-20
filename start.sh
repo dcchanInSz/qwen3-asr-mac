@@ -6,6 +6,8 @@ VENV_DIR="$SCRIPT_DIR/.venv"
 
 echo "=== Qwen3-ASR macOS App ==="
 
+export HF_ENDPOINT="${HF_ENDPOINT:-https://hf-mirror.com}"
+
 find_python() {
   for py in /opt/homebrew/bin/python3.12 /opt/homebrew/bin/python3 /usr/local/bin/python3.12 /usr/local/bin/python3 python3.12 python3; do
     if command -v "$py" &>/dev/null; then
