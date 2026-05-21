@@ -1,8 +1,16 @@
 # QwenTranscribe macOS
 
-基于 [Qwen3-ASR](https://huggingface.co/Qwen/Qwen3-ASR-1.7B) 的原生 macOS 语音转录应用。
+基于 [Qwen3-ASR](https://huggingface.co/Qwen/Qwen3-ASR-1.7B) 的原生 macOS 语音转录应用。上传音频文件，自动生成带时间戳的字幕并导出 SRT。
 
 [English](README.md)
+
+## 特性
+
+- **🎯 语音转文字** — 上传音频，自动转录，支持 20+ 语言
+- **⏱️ 句子级时间戳** — 每句标注起止时间，点击跳转播放
+- **📝 字幕导出** — 一键导出 SRT 字幕文件
+- **✏️ 在线编辑** — 直接修改转录结果，修正识别错误
+- **▶️ 边听边看** — 内置播放器，当前句子高亮跟随
 
 ## 环境要求
 
