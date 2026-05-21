@@ -1,14 +1,15 @@
 # QwenTranscribe macOS
 
-Native macOS speech transcription app using [Qwen3-ASR](https://huggingface.co/Qwen/Qwen3-ASR-1.7B). Upload audio, get automatic transcriptions with sentence-level timestamps, and export SRT subtitles.
+Native macOS speech transcription app using [Qwen3-ASR](https://huggingface.co/Qwen/Qwen3-ASR-1.7B). **Fully local — no internet required, no data ever leaves your device.** Upload audio, get automatic transcriptions with sentence-level timestamps, and export SRT subtitles.
 
 [中文文档](README_CN.md)
 
 ## Features
 
+- **🔒 Local & Private** — Runs entirely on your Mac, no cloud API, no data uploaded
 - **🎯 Speech-to-Text** — Upload any audio file, get instant transcription in 20+ languages
 - **⏱️ Sentence Timestamps** — Every sentence has start/end times; click to seek playback
-- **📝 SRT Export** — Export subtitles as standard SRT files for any video player
+- **📝 SRT Export** — Export subtitles as standard SRT files for any video editor or player
 - **✏️ Inline Editing** — Correct transcription errors directly in the timeline
 - **▶️ Playback Sync** — Built-in audio player with active sentence highlighting
 
