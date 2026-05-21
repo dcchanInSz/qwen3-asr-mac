@@ -4,7 +4,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 VENV_DIR="$SCRIPT_DIR/.venv"
 
-echo "=== Qwen3-ASR macOS App ==="
+echo "=== QwenTranscribe macOS ==="
 
 export HF_ENDPOINT="${HF_ENDPOINT:-https://hf-mirror.com}"
 

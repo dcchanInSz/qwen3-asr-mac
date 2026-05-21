@@ -2,12 +2,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "Qwen3ASR",
+    name: "QwenTranscribe",
     platforms: [.macOS(.v14)],
     products: [
-        .executable(name: "Qwen3ASR", targets: ["Qwen3ASR"])
+        .executable(name: "QwenTranscribe", targets: ["QwenTranscribe"])
     ],
     targets: [
-        .executableTarget(name: "Qwen3ASR")
+        .executableTarget(name: "QwenTranscribe")
     ]
 )

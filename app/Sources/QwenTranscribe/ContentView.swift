@@ -81,7 +81,7 @@ struct ContentView: View {
                 .foregroundColor(backendReady ? .accentColor : .secondary)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text("Qwen3-ASR")
+                Text("QwenTranscribe")
                     .font(.headline)
                 Text(headerStatusMessage)
                     .font(.caption)

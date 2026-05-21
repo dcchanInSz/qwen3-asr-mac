@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Qwen3-ASR backend server for macOS speech recognition UI."""
+"""QwenTranscribe backend server for macOS speech recognition UI."""
 
 import os
 import subprocess
@@ -316,7 +316,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Qwen3-ASR Server", lifespan=lifespan)
+app = FastAPI(title="QwenTranscribe", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

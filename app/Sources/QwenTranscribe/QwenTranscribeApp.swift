@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct Qwen3ASRApp: App {
+struct QwenTranscribeApp: App {
     @State private var backendReady = false
     @State private var modelLoaded = false
     @State private var timestampsSupported = false

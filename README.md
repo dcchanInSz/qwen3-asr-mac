@@ -1,4 +1,4 @@
-# Qwen3-ASR macOS App
+# QwenTranscribe macOS
 
 Native macOS speech recognition app using [Qwen3-ASR](https://huggingface.co/Qwen/Qwen3-ASR-1.7B).
 
