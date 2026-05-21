@@ -386,10 +386,6 @@ async def transcribe(
         audio_bytes = await file.read()
         audio_data = decode_audio(audio_bytes)
 
-        max_samples = 10 * 60 * 16000
-        if len(audio_data) > max_samples:
-            audio_data = audio_data[:max_samples]
-
         m = get_model()
         if m is None:
             from fastapi.responses import JSONResponse
