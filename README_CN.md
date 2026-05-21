@@ -1,6 +1,6 @@
 # QwenTranscribe macOS
 
-基于 [Qwen3-ASR](https://huggingface.co/Qwen/Qwen3-ASR-1.7B) 的原生 macOS 语音识别应用。
+基于 [Qwen3-ASR](https://huggingface.co/Qwen/Qwen3-ASR-1.7B) 的原生 macOS 语音转录应用。
 
 [English](README.md)
 
