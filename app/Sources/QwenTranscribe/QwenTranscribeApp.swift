@@ -69,7 +69,7 @@ struct QwenTranscribeApp: App {
 
     func launchBackendProcess() {
         let repoRoot = Bundle.main.bundlePath.contains("DerivedData") || Bundle.main.bundlePath.contains("debug")
-            ? NSHomeDirectory() + "/codes/qwen3-asr-mac"
+            ? NSHomeDirectory() + "/codes/qwen-transcribe"
             : Bundle.main.bundlePath + "/../../../.."
 
         let venvPython = "\(repoRoot)/.venv/bin/python3"

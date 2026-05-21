@@ -23,8 +23,8 @@ Native macOS speech transcription app using [Qwen3-ASR](https://huggingface.co/Q
 
 ```bash
 # Clone
-git clone https://github.com/user/qwen3-asr-mac.git
-cd qwen3-asr-mac
+git clone git@github.com:dcchanInSz/qwen-transcribe.git
+cd qwen-transcribe
 
 # One command to set up & run
 ./start.sh

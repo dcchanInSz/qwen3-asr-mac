@@ -23,8 +23,8 @@
 
 ```bash
 # 克隆仓库
-git clone https://github.com/dcchanInSz/qwen3-asr-mac.git
-cd qwen3-asr-mac
+git clone git@github.com:dcchanInSz/qwen-transcribe.git
+cd qwen-transcribe
 
 # 一条命令完成配置和启动
 ./start.sh
