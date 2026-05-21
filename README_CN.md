@@ -2,6 +2,10 @@
 
 基于 [Qwen3-ASR](https://huggingface.co/Qwen/Qwen3-ASR-1.7B) 的原生 macOS 语音转录应用。**纯本地运行，无需联网，不上传任何数据**。上传音频文件，自动生成带时间戳的字幕并导出 SRT。
 
+<p align="center">
+  <img src="snapshoot.png" alt="QwenTranscribe 截图" width="700">
+</p>
+
 [English](README.md)
 
 ## 特性
