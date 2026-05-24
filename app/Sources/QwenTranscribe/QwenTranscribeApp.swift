@@ -19,10 +19,7 @@ struct QwenTranscribeApp: App {
                 showSettings: $showSettings
             )
             .frame(minWidth: 540, minHeight: 480)
-            .onAppear {
-                startBackend()
-                NSApp.activate(ignoringOtherApps: true)
-            }
+            .onAppear { startBackend() }
             .onDisappear { stopBackend() }
             .sheet(isPresented: $showSettings) {
                 SettingsView(

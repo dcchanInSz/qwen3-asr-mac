@@ -12,98 +12,6 @@ struct TimestampSegment: Codable, Identifiable {
     var text: String
 }
 
-// MARK: - Native Text Editor (macOS)
-
-struct MacEditorView: NSViewRepresentable {
-    typealias NSViewType = NSTextView
-    @Binding var text: String
-    var onSubmit: () -> Void
-    var onCancel: () -> Void
-
-    func makeNSView(context: Context) -> NSTextView {
-        let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: 400, height: 80))
-        textView.delegate = context.coordinator
-        textView.font = NSFont.systemFont(ofSize: NSFont.systemFontSize)
-        textView.textColor = NSColor.textColor
-        textView.isRichText = false
-        textView.isEditable = true
-        textView.isSelectable = true
-        textView.allowsUndo = true
-        textView.drawsBackground = false
-        textView.isHorizontallyResizable = false
-        textView.isVerticallyResizable = true
-        textView.minSize = NSSize(width: 0, height: 40)
-        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
-        textView.textContainer?.widthTracksTextView = true
-        textView.textContainer?.containerSize = NSSize(
-            width: CGFloat.greatestFiniteMagnitude,
-            height: CGFloat.greatestFiniteMagnitude
-        )
-        print("[MacEditor] makeNSView frame=\(textView.frame)")
-        return textView
-    }
-
-    func sizeThatFits(_ proposal: ProposedViewSize, nsView: NSTextView, context: Context) -> CGSize? {
-        let w = proposal.width ?? nsView.frame.width
-        let h = proposal.height ?? max(nsView.frame.height, 80)
-        return CGSize(width: w, height: h)
-    }
-
-    func updateNSView(_ nsView: NSTextView, context: Context) {
-        print("[MacEditor] updateNSView frame=\(nsView.frame), window=\(nsView.window != nil ? "yes" : "NO"), key=\(nsView.window?.isKeyWindow ?? false)")
-        if context.coordinator.isUpdating { return }
-        if nsView.string != text {
-            print("[MacEditor] updateNSView setting text: \"\(text.prefix(30))\"")
-            context.coordinator.isUpdating = true
-            nsView.string = text
-            context.coordinator.isUpdating = false
-        }
-        context.coordinator.onSubmit = onSubmit
-        context.coordinator.onCancel = onCancel
-    }
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text, onSubmit: onSubmit, onCancel: onCancel)
-    }
-
-    class Coordinator: NSObject, NSTextViewDelegate {
-        var text: Binding<String>
-        var onSubmit: () -> Void
-        var onCancel: () -> Void
-        var isUpdating = false
-
-        init(text: Binding<String>, onSubmit: @escaping () -> Void, onCancel: @escaping () -> Void) {
-            self.text = text
-            self.onSubmit = onSubmit
-            self.onCancel = onCancel
-        }
-
-        func textDidChange(_ notification: Notification) {
-            guard !isUpdating, let textView = notification.object as? NSTextView else { return }
-            let newText = textView.string
-            print("[MacEditor] textDidChange: \"\(newText.prefix(30))...\"")
-            text.wrappedValue = newText
-        }
-
-        func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
-            if commandSelector == #selector(NSResponder.cancelOperation(_:)) {
-                print("[MacEditor] Escape pressed, cancel")
-                onCancel()
-                return true
-            }
-            return false
-        }
-        
-        func textDidBeginEditing(_ notification: Notification) {
-            print("[MacEditor] textDidBeginEditing")
-        }
-        
-        func textDidEndEditing(_ notification: Notification) {
-            print("[MacEditor] textDidEndEditing")
-        }
-    }
-}
-
 // MARK: - Main View
 
 struct ContentView: View {
@@ -166,12 +74,11 @@ struct ContentView: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
 
-                MacEditorView(
-                    text: $editBuffer,
-                    onSubmit: { commitEdit() },
-                    onCancel: { cancelEdit() }
-                )
-                .frame(maxWidth: .infinity, minHeight: 80, maxHeight: 120)
+                TextEditor(text: $editBuffer)
+                    .font(.system(size: 14))
+                    .scrollContentBackground(.hidden)
+                    .onSubmit { commitEdit() }
+                    .frame(maxWidth: .infinity, minHeight: 80, maxHeight: 120)
             }
             .background(.regularMaterial)
             .clipShape(RoundedRectangle(cornerRadius: 10))
@@ -391,26 +298,12 @@ struct ContentView: View {
 
     func startEdit(at index: Int) {
         guard index < timestamps.count else { return }
-        print("[ContentView] startEdit at index=\(index), text=\"\(timestamps[index].text.prefix(20))\"")
         editingIndex = index
         editBuffer = timestamps[index].text
-        NSApp.activate(ignoringOtherApps: true)
-        DispatchQueue.main.async {
-            if let w = NSApp.keyWindow {
-                print("[ContentView] keyWindow=\(w.title), firstResponder=\(w.firstResponder.debugDescription)")
-            } else {
-                print("[ContentView] NO keyWindow!")
-            }
-        }
     }
 
     func commitEdit() {
-        print("[ContentView] commitEdit called, editBuffer=\"\(editBuffer.prefix(20))\"")
-        guard let idx = editingIndex, idx < timestamps.count else {
-            print("[ContentView] commitEdit failed: no valid editingIndex")
-            return
-        }
-        print("[ContentView] commitEdit success: updating timestamps[\(idx)]")
+        guard let idx = editingIndex, idx < timestamps.count else { return }
         timestamps[idx].text = editBuffer
         transcription = timestamps.map(\.text).joined()
         editingIndex = nil
@@ -418,7 +311,6 @@ struct ContentView: View {
     }
 
     func cancelEdit() {
-        print("[ContentView] cancelEdit called")
         editingIndex = nil
         editBuffer = ""
     }
