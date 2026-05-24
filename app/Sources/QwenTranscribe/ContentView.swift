@@ -1,6 +1,7 @@
 import SwiftUI
 import AVFoundation
 import UniformTypeIdentifiers
+import AppKit
 
 // MARK: - Data Models
 
@@ -36,7 +37,6 @@ struct ContentView: View {
     @State private var playbackTimer: Timer?
     @State private var editingIndex: Int?
     @State private var editBuffer: String = ""
-    @FocusState private var editFieldFocused: Bool
 
     private let session: URLSession = {
         let config = URLSessionConfiguration.default
@@ -219,13 +219,12 @@ struct ContentView: View {
                         .onTapGesture { seekTo(seg.start) }
 
                     if isEditing {
-                        TextField("", text: $editBuffer, axis: .vertical)
+                        TextEditor(text: $editBuffer)
                             .font(.system(size: 15))
-                            .textFieldStyle(.plain)
-                            .focused($editFieldFocused)
-                            .onAppear { editFieldFocused = true }
+                            .frame(minHeight: 40, maxHeight: 120)
+                            .scrollContentBackground(.hidden)
                             .onSubmit { commitEdit() }
-                            .onExitCommand { cancelEdit() }
+                            .onKeyPress(.escape) { cancelEdit(); return .handled }
                     } else {
                         Text(seg.text)
                             .font(.system(size: 15))
@@ -275,6 +274,12 @@ struct ContentView: View {
         guard index < timestamps.count else { return }
         editingIndex = index
         editBuffer = timestamps[index].text
+        NSApp.activate(ignoringOtherApps: true)
+        DispatchQueue.main.async {
+            if let editor = NSApp.keyWindow?.firstResponder as? NSTextView {
+                editor.selectAll(nil)
+            }
+        }
     }
 
     func commitEdit() {
@@ -283,13 +288,11 @@ struct ContentView: View {
         transcription = timestamps.map(\.text).joined()
         editingIndex = nil
         editBuffer = ""
-        editFieldFocused = false
     }
 
     func cancelEdit() {
         editingIndex = nil
         editBuffer = ""
-        editFieldFocused = false
     }
 
     func formatTime(_ seconds: Double) -> String {
