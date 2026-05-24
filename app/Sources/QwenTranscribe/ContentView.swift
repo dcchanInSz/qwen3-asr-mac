@@ -12,6 +12,77 @@ struct TimestampSegment: Codable, Identifiable {
     var text: String
 }
 
+// MARK: - Native Text Editor (macOS)
+
+struct MacEditorView: NSViewRepresentable {
+    @Binding var text: String
+    var onSubmit: () -> Void
+    var onCancel: () -> Void
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let scrollView = NSTextView.scrollableTextView()
+        guard let textView = scrollView.documentView as? NSTextView else {
+            return scrollView
+        }
+        textView.delegate = context.coordinator
+        textView.font = NSFont.systemFont(ofSize: NSFont.systemFontSize)
+        textView.isRichText = false
+        textView.isEditable = true
+        textView.isSelectable = true
+        textView.allowsUndo = true
+        textView.drawsBackground = false
+        textView.isHorizontallyResizable = false
+        textView.isVerticallyResizable = true
+        textView.textContainer?.widthTracksTextView = true
+        textView.textContainer?.containerSize = NSSize(
+            width: scrollView.contentSize.width,
+            height: CGFloat.greatestFiniteMagnitude
+        )
+        scrollView.drawsBackground = false
+        scrollView.borderType = .noBorder
+        scrollView.hasVerticalScroller = true
+        return scrollView
+    }
+
+    func updateNSView(_ nsView: NSScrollView, context: Context) {
+        guard let textView = nsView.documentView as? NSTextView else { return }
+        if textView.string != text {
+            textView.string = text
+        }
+        context.coordinator.onSubmit = onSubmit
+        context.coordinator.onCancel = onCancel
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(text: $text, onSubmit: onSubmit, onCancel: onCancel)
+    }
+
+    class Coordinator: NSObject, NSTextViewDelegate {
+        var text: Binding<String>
+        var onSubmit: () -> Void
+        var onCancel: () -> Void
+
+        init(text: Binding<String>, onSubmit: @escaping () -> Void, onCancel: @escaping () -> Void) {
+            self.text = text
+            self.onSubmit = onSubmit
+            self.onCancel = onCancel
+        }
+
+        func textDidChange(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else { return }
+            text.wrappedValue = textView.string
+        }
+
+        func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+            if commandSelector == #selector(NSResponder.cancelOperation(_:)) {
+                onCancel()
+                return true
+            }
+            return false
+        }
+    }
+}
+
 // MARK: - Main View
 
 struct ContentView: View {
@@ -219,12 +290,12 @@ struct ContentView: View {
                         .onTapGesture { seekTo(seg.start) }
 
                     if isEditing {
-                        TextEditor(text: $editBuffer)
-                            .font(.system(size: 15))
-                            .frame(minHeight: 40, maxHeight: 120)
-                            .scrollContentBackground(.hidden)
-                            .onSubmit { commitEdit() }
-                            .onKeyPress(.escape) { cancelEdit(); return .handled }
+                        MacEditorView(
+                            text: $editBuffer,
+                            onSubmit: { commitEdit() },
+                            onCancel: { cancelEdit() }
+                        )
+                        .frame(minHeight: 40, maxHeight: 120)
                     } else {
                         Text(seg.text)
                             .font(.system(size: 15))
@@ -274,12 +345,6 @@ struct ContentView: View {
         guard index < timestamps.count else { return }
         editingIndex = index
         editBuffer = timestamps[index].text
-        NSApp.activate(ignoringOtherApps: true)
-        DispatchQueue.main.async {
-            if let editor = NSApp.keyWindow?.firstResponder as? NSTextView {
-                editor.selectAll(nil)
-            }
-        }
     }
 
     func commitEdit() {
