@@ -15,15 +15,13 @@ struct TimestampSegment: Codable, Identifiable {
 // MARK: - Native Text Editor (macOS)
 
 struct MacEditorView: NSViewRepresentable {
+    typealias NSViewType = NSTextView
     @Binding var text: String
     var onSubmit: () -> Void
     var onCancel: () -> Void
 
-    func makeNSView(context: Context) -> NSScrollView {
-        let scrollView = NSTextView.scrollableTextView()
-        guard let textView = scrollView.documentView as? NSTextView else {
-            return scrollView
-        }
+    func makeNSView(context: Context) -> NSTextView {
+        let textView = NSTextView(frame: .zero)
         textView.delegate = context.coordinator
         textView.font = NSFont.systemFont(ofSize: NSFont.systemFontSize)
         textView.isRichText = false
@@ -32,22 +30,23 @@ struct MacEditorView: NSViewRepresentable {
         textView.allowsUndo = true
         textView.drawsBackground = false
         textView.isHorizontallyResizable = false
-        textView.isVerticallyResizable = true
+        textView.isVerticallyResizable = false
         textView.textContainer?.widthTracksTextView = true
         textView.textContainer?.containerSize = NSSize(
-            width: scrollView.contentSize.width,
+            width: CGFloat.greatestFiniteMagnitude,
             height: CGFloat.greatestFiniteMagnitude
         )
-        scrollView.drawsBackground = false
-        scrollView.borderType = .noBorder
-        scrollView.hasVerticalScroller = true
-        return scrollView
+        print("[MacEditor] makeNSView created, editable=\(textView.isEditable)")
+        return textView
     }
 
-    func updateNSView(_ nsView: NSScrollView, context: Context) {
-        guard let textView = nsView.documentView as? NSTextView else { return }
-        if textView.string != text {
-            textView.string = text
+    func updateNSView(_ nsView: NSTextView, context: Context) {
+        if context.coordinator.isUpdating { return }
+        if nsView.string != text {
+            print("[MacEditor] updateNSView setting text: \"\(text.prefix(30))...\"")
+            context.coordinator.isUpdating = true
+            nsView.string = text
+            context.coordinator.isUpdating = false
         }
         context.coordinator.onSubmit = onSubmit
         context.coordinator.onCancel = onCancel
@@ -61,6 +60,7 @@ struct MacEditorView: NSViewRepresentable {
         var text: Binding<String>
         var onSubmit: () -> Void
         var onCancel: () -> Void
+        var isUpdating = false
 
         init(text: Binding<String>, onSubmit: @escaping () -> Void, onCancel: @escaping () -> Void) {
             self.text = text
@@ -69,16 +69,27 @@ struct MacEditorView: NSViewRepresentable {
         }
 
         func textDidChange(_ notification: Notification) {
-            guard let textView = notification.object as? NSTextView else { return }
-            text.wrappedValue = textView.string
+            guard !isUpdating, let textView = notification.object as? NSTextView else { return }
+            let newText = textView.string
+            print("[MacEditor] textDidChange: \"\(newText.prefix(30))...\"")
+            text.wrappedValue = newText
         }
 
         func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
             if commandSelector == #selector(NSResponder.cancelOperation(_:)) {
+                print("[MacEditor] Escape pressed, cancel")
                 onCancel()
                 return true
             }
             return false
+        }
+        
+        func textDidBeginEditing(_ notification: Notification) {
+            print("[MacEditor] textDidBeginEditing")
+        }
+        
+        func textDidEndEditing(_ notification: Notification) {
+            print("[MacEditor] textDidEndEditing")
         }
     }
 }
@@ -108,6 +119,7 @@ struct ContentView: View {
     @State private var playbackTimer: Timer?
     @State private var editingIndex: Int?
     @State private var editBuffer: String = ""
+    @State private var editBuffer2: String = ""
 
     private let session: URLSession = {
         let config = URLSessionConfiguration.default
@@ -152,6 +164,15 @@ struct ContentView: View {
                     onCancel: { cancelEdit() }
                 )
                 .frame(height: 100)
+
+                Divider()
+                    .padding(.horizontal, 12)
+
+                TextField("SwiftUI test field - type here", text: $editBuffer2)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 13))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 4)
             }
             .background(.regularMaterial)
             .clipShape(RoundedRectangle(cornerRadius: 10))
@@ -380,12 +401,18 @@ struct ContentView: View {
 
     func startEdit(at index: Int) {
         guard index < timestamps.count else { return }
+        print("[ContentView] startEdit at index=\(index), text=\"\(timestamps[index].text.prefix(20))\"")
         editingIndex = index
         editBuffer = timestamps[index].text
     }
 
     func commitEdit() {
-        guard let idx = editingIndex, idx < timestamps.count else { return }
+        print("[ContentView] commitEdit called, editBuffer=\"\(editBuffer.prefix(20))\"")
+        guard let idx = editingIndex, idx < timestamps.count else {
+            print("[ContentView] commitEdit failed: no valid editingIndex")
+            return
+        }
+        print("[ContentView] commitEdit success: updating timestamps[\(idx)]")
         timestamps[idx].text = editBuffer
         transcription = timestamps.map(\.text).joined()
         editingIndex = nil
@@ -393,6 +420,7 @@ struct ContentView: View {
     }
 
     func cancelEdit() {
+        print("[ContentView] cancelEdit called")
         editingIndex = nil
         editBuffer = ""
     }
