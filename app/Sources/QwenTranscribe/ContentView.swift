@@ -31,7 +31,9 @@ struct MacEditorView: NSViewRepresentable {
         textView.allowsUndo = true
         textView.drawsBackground = false
         textView.isHorizontallyResizable = false
-        textView.isVerticallyResizable = false
+        textView.isVerticallyResizable = true
+        textView.minSize = NSSize(width: 0, height: 40)
+        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         textView.textContainer?.widthTracksTextView = true
         textView.textContainer?.containerSize = NSSize(
             width: CGFloat.greatestFiniteMagnitude,
@@ -39,6 +41,12 @@ struct MacEditorView: NSViewRepresentable {
         )
         print("[MacEditor] makeNSView frame=\(textView.frame)")
         return textView
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, nsView: NSTextView, context: Context) -> CGSize? {
+        let w = proposal.width ?? nsView.frame.width
+        let h = proposal.height ?? max(nsView.frame.height, 80)
+        return CGSize(width: w, height: h)
     }
 
     func updateNSView(_ nsView: NSTextView, context: Context) {
@@ -163,7 +171,7 @@ struct ContentView: View {
                     onSubmit: { commitEdit() },
                     onCancel: { cancelEdit() }
                 )
-                .frame(height: 100)
+                .frame(maxWidth: .infinity, minHeight: 80, maxHeight: 120)
             }
             .background(.regularMaterial)
             .clipShape(RoundedRectangle(cornerRadius: 10))
