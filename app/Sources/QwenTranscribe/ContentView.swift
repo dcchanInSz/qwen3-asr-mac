@@ -107,7 +107,6 @@ struct ContentView: View {
     @State private var statusMessage = "Waiting for backend..."
     @State private var isTranscribing = false
     @State private var timestamps: [TimestampSegment] = []
-    @State private var showFilePicker = false
     @State private var elapsedSeconds = 0
     @State private var progressTimer: Timer?
 
@@ -119,7 +118,6 @@ struct ContentView: View {
     @State private var playbackTimer: Timer?
     @State private var editingIndex: Int?
     @State private var editBuffer: String = ""
-    @State private var editBuffer2: String = ""
 
     private let session: URLSession = {
         let config = URLSessionConfiguration.default
@@ -164,15 +162,6 @@ struct ContentView: View {
                     onCancel: { cancelEdit() }
                 )
                 .frame(height: 100)
-
-                Divider()
-                    .padding(.horizontal, 12)
-
-                TextField("SwiftUI test field - type here", text: $editBuffer2)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 13))
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 4)
             }
             .background(.regularMaterial)
             .clipShape(RoundedRectangle(cornerRadius: 10))
@@ -196,15 +185,6 @@ struct ContentView: View {
                 controlsView
             }
             .background(Color(nsColor: .windowBackgroundColor))
-            .fileImporter(
-                isPresented: $showFilePicker,
-                allowedContentTypes: [.audio],
-                allowsMultipleSelection: false
-            ) { result in
-                if case .success(let urls) = result, let url = urls.first {
-                    transcribeFile(url: url)
-                }
-            }
 
             if editingIndex != nil {
                 editingOverlay
@@ -469,7 +449,7 @@ struct ContentView: View {
     }
 
     var fileModeButton: some View {
-        Button(action: { showFilePicker = true }) {
+        Button(action: { openFilePicker() }) {
             HStack(spacing: 8) {
                 Image(systemName: "doc.badge.plus")
                 Text("Select Audio File")
@@ -535,7 +515,7 @@ struct ContentView: View {
                         .foregroundColor(.secondary.opacity(0.3))
                 }
                 Button("Open New File") {
-                    showFilePicker = true
+                    openFilePicker()
                 }
                 .buttonStyle(.plain)
                 .font(.caption)
@@ -545,6 +525,18 @@ struct ContentView: View {
     }
 
     // MARK: - File Transcription
+
+    func openFilePicker() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.audio]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.begin { response in
+            if response == .OK, let url = panel.url {
+                transcribeFile(url: url)
+            }
+        }
+    }
 
     func transcribeFile(url: URL) {
         transcription = ""
