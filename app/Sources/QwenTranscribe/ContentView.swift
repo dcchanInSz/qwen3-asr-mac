@@ -216,18 +216,21 @@ struct ContentView: View {
                         .font(.system(size: 11, design: .monospaced))
                         .foregroundColor(isActive ? .accentColor : .secondary)
                         .frame(width: 56, alignment: .trailing)
+                        .onTapGesture { seekTo(seg.start) }
 
                     if isEditing {
                         TextField("", text: $editBuffer, axis: .vertical)
                             .font(.system(size: 15))
                             .textFieldStyle(.plain)
                             .focused($editFieldFocused)
+                            .onAppear { editFieldFocused = true }
                             .onSubmit { commitEdit() }
                             .onExitCommand { cancelEdit() }
                     } else {
                         Text(seg.text)
                             .font(.system(size: 15))
                             .textSelection(.enabled)
+                            .onTapGesture { seekTo(seg.start) }
                     }
 
                     Spacer()
@@ -250,14 +253,11 @@ struct ContentView: View {
                         .font(.system(size: 11, design: .monospaced))
                         .foregroundColor(isActive ? .accentColor : .secondary.opacity(0.6))
                         .frame(width: 56, alignment: .leading)
+                        .onTapGesture { seekTo(seg.start) }
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 6)
                 .background(isActive ? Color.accentColor.opacity(0.08) : Color.clear)
-                .contentShape(Rectangle())
-                .simultaneousGesture(TapGesture().onEnded {
-                    if !isEditing { seekTo(seg.start) }
-                })
 
                 if i < timestamps.count - 1 {
                     Divider().padding(.leading, 88)
@@ -275,7 +275,6 @@ struct ContentView: View {
         guard index < timestamps.count else { return }
         editingIndex = index
         editBuffer = timestamps[index].text
-        editFieldFocused = true
     }
 
     func commitEdit() {
