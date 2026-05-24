@@ -123,23 +123,70 @@ struct ContentView: View {
         "Turkish", "Hindi", "Malay", "Dutch", "Swedish"
     ]
 
-    var body: some View {
-        VStack(spacing: 0) {
-            headerView
-            Divider()
-            modelWarningBanner
-            transcriptionView
-            Divider()
-            controlsView
+    // MARK: - Editing Overlay (outside ScrollView, no focus interference)
+
+    var editingOverlay: some View {
+        VStack {
+            Spacer()
+            VStack(spacing: 0) {
+                HStack {
+                    Text("Editing")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Button("Cancel") { cancelEdit() }
+                        .buttonStyle(.plain)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Button("Done") { commitEdit() }
+                        .buttonStyle(.borderedProminent)
+                        .font(.caption)
+                        .controlSize(.small)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+
+                MacEditorView(
+                    text: $editBuffer,
+                    onSubmit: { commitEdit() },
+                    onCancel: { cancelEdit() }
+                )
+                .frame(height: 100)
+            }
+            .background(.regularMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(Color.secondary.opacity(0.2), lineWidth: 0.5)
+            )
+            .padding(.horizontal, 16)
+            .padding(.bottom, 12)
         }
-        .background(Color(nsColor: .windowBackgroundColor))
-        .fileImporter(
-            isPresented: $showFilePicker,
-            allowedContentTypes: [.audio],
-            allowsMultipleSelection: false
-        ) { result in
-            if case .success(let urls) = result, let url = urls.first {
-                transcribeFile(url: url)
+    }
+
+    var body: some View {
+        ZStack {
+            VStack(spacing: 0) {
+                headerView
+                Divider()
+                modelWarningBanner
+                transcriptionView
+                Divider()
+                controlsView
+            }
+            .background(Color(nsColor: .windowBackgroundColor))
+            .fileImporter(
+                isPresented: $showFilePicker,
+                allowedContentTypes: [.audio],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    transcribeFile(url: url)
+                }
+            }
+
+            if editingIndex != nil {
+                editingOverlay
             }
         }
     }
@@ -290,12 +337,9 @@ struct ContentView: View {
                         .onTapGesture { seekTo(seg.start) }
 
                     if isEditing {
-                        MacEditorView(
-                            text: $editBuffer,
-                            onSubmit: { commitEdit() },
-                            onCancel: { cancelEdit() }
-                        )
-                        .frame(minHeight: 40, maxHeight: 120)
+                        Text(seg.text)
+                            .font(.system(size: 15))
+                            .foregroundColor(.accentColor)
                     } else {
                         Text(seg.text)
                             .font(.system(size: 15))
@@ -305,19 +349,12 @@ struct ContentView: View {
 
                     Spacer()
 
-                    if isEditing {
-                        Button("Done") { commitEdit() }
-                            .buttonStyle(.plain)
+                    Button { startEdit(at: i) } label: {
+                        Image(systemName: "pencil")
                             .font(.caption)
-                            .foregroundColor(.accentColor)
-                    } else {
-                        Button { startEdit(at: i) } label: {
-                            Image(systemName: "pencil")
-                                .font(.caption)
-                                .foregroundColor(.secondary.opacity(0.5))
-                        }
-                        .buttonStyle(.plain)
+                            .foregroundColor(isEditing ? .accentColor : .secondary.opacity(0.5))
                     }
+                    .buttonStyle(.plain)
 
                     Text(formatTime(seg.end))
                         .font(.system(size: 11, design: .monospaced))
