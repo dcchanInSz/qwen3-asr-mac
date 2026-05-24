@@ -21,9 +21,10 @@ struct MacEditorView: NSViewRepresentable {
     var onCancel: () -> Void
 
     func makeNSView(context: Context) -> NSTextView {
-        let textView = NSTextView(frame: .zero)
+        let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: 400, height: 80))
         textView.delegate = context.coordinator
         textView.font = NSFont.systemFont(ofSize: NSFont.systemFontSize)
+        textView.textColor = NSColor.textColor
         textView.isRichText = false
         textView.isEditable = true
         textView.isSelectable = true
@@ -36,14 +37,15 @@ struct MacEditorView: NSViewRepresentable {
             width: CGFloat.greatestFiniteMagnitude,
             height: CGFloat.greatestFiniteMagnitude
         )
-        print("[MacEditor] makeNSView created, editable=\(textView.isEditable)")
+        print("[MacEditor] makeNSView frame=\(textView.frame)")
         return textView
     }
 
     func updateNSView(_ nsView: NSTextView, context: Context) {
+        print("[MacEditor] updateNSView frame=\(nsView.frame), window=\(nsView.window != nil ? "yes" : "NO"), key=\(nsView.window?.isKeyWindow ?? false)")
         if context.coordinator.isUpdating { return }
         if nsView.string != text {
-            print("[MacEditor] updateNSView setting text: \"\(text.prefix(30))...\"")
+            print("[MacEditor] updateNSView setting text: \"\(text.prefix(30))\"")
             context.coordinator.isUpdating = true
             nsView.string = text
             context.coordinator.isUpdating = false
@@ -384,6 +386,14 @@ struct ContentView: View {
         print("[ContentView] startEdit at index=\(index), text=\"\(timestamps[index].text.prefix(20))\"")
         editingIndex = index
         editBuffer = timestamps[index].text
+        NSApp.activate(ignoringOtherApps: true)
+        DispatchQueue.main.async {
+            if let w = NSApp.keyWindow {
+                print("[ContentView] keyWindow=\(w.title), firstResponder=\(w.firstResponder.debugDescription)")
+            } else {
+                print("[ContentView] NO keyWindow!")
+            }
+        }
     }
 
     func commitEdit() {
