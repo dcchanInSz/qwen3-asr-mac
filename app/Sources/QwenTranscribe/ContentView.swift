@@ -34,8 +34,9 @@ struct ContentView: View {
     @State private var playbackTime: Double = 0
     @State private var audioDuration: Double = 0
     @State private var playbackTimer: Timer?
-    @State private var editingSegmentId: String?
+    @State private var editingIndex: Int?
     @State private var editBuffer: String = ""
+    @FocusState private var editFieldFocused: Bool
 
     private let session: URLSession = {
         let config = URLSessionConfiguration.default
@@ -207,9 +208,9 @@ struct ContentView: View {
 
     func timelineSection(proxy: ScrollViewProxy) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            ForEach(Array(timestamps.enumerated()), id: \.element.id) { i, seg in
+            ForEach(Array(timestamps.enumerated()), id: \.offset) { i, seg in
                 let isActive = playbackTime >= seg.start && playbackTime < seg.end
-                let isEditing = editingSegmentId == seg.id
+                let isEditing = editingIndex == i
                 HStack(alignment: .top, spacing: 12) {
                     Text(formatTime(seg.start))
                         .font(.system(size: 11, design: .monospaced))
@@ -220,7 +221,8 @@ struct ContentView: View {
                         TextField("", text: $editBuffer, axis: .vertical)
                             .font(.system(size: 15))
                             .textFieldStyle(.plain)
-                            .onSubmit { commitEdit(seg.id) }
+                            .focused($editFieldFocused)
+                            .onSubmit { commitEdit() }
                             .onExitCommand { cancelEdit() }
                     } else {
                         Text(seg.text)
@@ -231,12 +233,12 @@ struct ContentView: View {
                     Spacer()
 
                     if isEditing {
-                        Button("Done") { commitEdit(seg.id) }
+                        Button("Done") { commitEdit() }
                             .buttonStyle(.plain)
                             .font(.caption)
                             .foregroundColor(.accentColor)
                     } else {
-                        Button { startEdit(seg) } label: {
+                        Button { startEdit(at: i) } label: {
                             Image(systemName: "pencil")
                                 .font(.caption)
                                 .foregroundColor(.secondary.opacity(0.5))
@@ -253,9 +255,9 @@ struct ContentView: View {
                 .padding(.vertical, 6)
                 .background(isActive ? Color.accentColor.opacity(0.08) : Color.clear)
                 .contentShape(Rectangle())
-                .onTapGesture {
+                .simultaneousGesture(TapGesture().onEnded {
                     if !isEditing { seekTo(seg.start) }
-                }
+                })
 
                 if i < timestamps.count - 1 {
                     Divider().padding(.leading, 88)
@@ -269,22 +271,26 @@ struct ContentView: View {
         }
     }
 
-    func startEdit(_ seg: TimestampSegment) {
-        editingSegmentId = seg.id
-        editBuffer = seg.text
+    func startEdit(at index: Int) {
+        guard index < timestamps.count else { return }
+        editingIndex = index
+        editBuffer = timestamps[index].text
+        editFieldFocused = true
     }
 
-    func commitEdit(_ id: String) {
-        guard let idx = timestamps.firstIndex(where: { $0.id == id }) else { return }
+    func commitEdit() {
+        guard let idx = editingIndex, idx < timestamps.count else { return }
         timestamps[idx].text = editBuffer
         transcription = timestamps.map(\.text).joined()
-        editingSegmentId = nil
+        editingIndex = nil
         editBuffer = ""
+        editFieldFocused = false
     }
 
     func cancelEdit() {
-        editingSegmentId = nil
+        editingIndex = nil
         editBuffer = ""
+        editFieldFocused = false
     }
 
     func formatTime(_ seconds: Double) -> String {
